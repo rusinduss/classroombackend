@@ -20,7 +20,7 @@ const app = express();
 // Debugging log for env
 console.log("🔑 OpenAI key loaded:", process.env.OPENAI_API_KEY?.slice(0, 10) + "...");
 
-app.use(cors({ origin: "http://localhost:5173", credentials: true }));
+app.use(cors({ origin: "https://classroomprojec.netlify.app/", credentials: true }));  /*http://localhost:5173*/
 app.use(express.json());
 app.use(cookieParser());
 
