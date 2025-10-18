@@ -2,7 +2,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 
-// const connectDB = require ('../config/db.js')
+
 
 const generateAccessToken = (user) => {
   return jwt.sign(

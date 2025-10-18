@@ -1,7 +1,12 @@
 import openai from "../config/openai.js";
 import Course from "../models/Course.js";
 
-let requestCount = 0; // Simple in-memory counter 
+let requestCount = 0;
+
+// Reset limit every 24h
+setInterval(() => {
+  requestCount = 0;
+}, 24 * 60 * 60 * 1000);
 
 export const getRecommendations = async (req, res) => {
   try {
@@ -12,9 +17,7 @@ export const getRecommendations = async (req, res) => {
     const { prompt, limit = 5 } = req.body;
     if (!prompt) return res.status(400).json({ message: "Prompt is required" });
 
-    // Fetch available courses (limit to 10–20 for efficiency)
     const courses = await Course.find().limit(10).select("title description");
-
     const courseList = courses
       .map((c, i) => `${i + 1}. ${c.title}: ${c.description}`)
       .join("\n");
@@ -33,24 +36,38 @@ Return them in JSON format like:
 ]
 `;
 
-    // Make GPT API call
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini", // lightweight and cost-efficient
+      model: "gpt-4o-mini",
       messages: [{ role: "user", content: gptPrompt }],
       temperature: 0.7,
     });
 
     requestCount++;
 
-    let recommendations;
-    try {
-      recommendations = JSON.parse(completion.choices[0].message.content);
-    } catch (e) {
-      recommendations = [{ error: "Could not parse GPT response" }];
-    }
+ const content = completion?.choices?.[0]?.message?.content?.trim();
 
-    res.json({ recommendations, requestsUsed: requestCount });
+let cleanedContent = content;
+if (cleanedContent.startsWith("```")) {
+  cleanedContent = cleanedContent.replace(/```json|```/g, "").trim();
+}
+
+let recommendations;
+try {
+  recommendations = JSON.parse(cleanedContent);
+} catch {
+  recommendations = [
+    { title: "Invalid GPT Response", reason: cleanedContent || "No valid JSON returned" },
+  ];
+}
+
+
+    res.json({
+      model: completion.model,
+      recommendations,
+      requestsUsed: requestCount,
+    });
   } catch (error) {
+    console.error("GPT Error:", error);
     res.status(500).json({ message: "GPT request failed", error: error.message });
   }
 };
